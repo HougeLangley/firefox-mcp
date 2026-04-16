@@ -196,9 +196,11 @@ MIT License - 详见 LICENSE 文件
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Mozilla Add-ons](https://addons.mozilla.org/)
 
-## 🔌 mcporter 集成
+## 🔌 mcporter 集成（OpenClaw 用户推荐）
 
 Firefox MCP 支持通过 [mcporter](https://github.com/openclaw/mcporter) 调用，方便 OpenClaw 用户使用。
+
+📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md) - 包含完整的安装、配置和使用教程
 
 ### 配置
 
