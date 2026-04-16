@@ -195,3 +195,51 @@ MIT License - 详见 LICENSE 文件
 
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Mozilla Add-ons](https://addons.mozilla.org/)
+
+## 🔌 mcporter 集成
+
+Firefox MCP 支持通过 [mcporter](https://github.com/openclaw/mcporter) 调用，方便 OpenClaw 用户使用。
+
+### 配置
+
+添加到你的 `~/.mcporter/mcporter.json`:
+
+```json
+{
+  "mcpServers": {
+    "firefox-mcp": {
+      "command": "node",
+      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
+    }
+  }
+}
+```
+
+### 使用 mcporter 调用
+
+```bash
+# 列出工具
+mcporter list firefox-mcp
+
+# 导航到 URL
+mcporter call firefox-mcp.firefox_navigate url="https://example.com"
+
+# 获取当前页面信息
+mcporter call firefox-mcp.firefox_get_current_url
+mcporter call firefox-mcp.firefox_get_page_title
+mcporter call firefox-mcp.firefox_get_page_content
+
+# 执行 JavaScript
+mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
+
+# 截图
+mcporter call firefox-mcp.firefox_screenshot
+
+# 等待
+mcporter call firefox-mcp.firefox_wait duration=2000
+```
+
+### 前提条件
+
+- Firefox MCP 服务器必须正在运行（`systemctl --user status firefox-mcp`）
+- Firefox 扩展必须已安装并连接
