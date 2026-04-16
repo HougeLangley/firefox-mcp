@@ -26,7 +26,13 @@ node ws-server-v2.js
 
 ### 2. 安装 Firefox 扩展
 
-**方法 A：开发者模式（推荐开发使用）**
+**方法 A：直接安装签名版（推荐）**
+1. 下载已签名的扩展：[firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/raw/main/firefox-mcp-v1.0.0.xpi)
+2. 打开 Firefox，访问 `about:addons`
+3. 点击齿轮图标 -> "从文件安装附加组件"
+4. 选择下载的 XPI 文件
+
+**方法 B：开发者模式（推荐开发使用）**
 1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`
 2. 点击"临时载入附加组件"
 3. 选择 `extension/manifest.json`
