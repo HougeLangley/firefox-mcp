@@ -158,7 +158,32 @@ client.disconnect();
 
 ## 配置
 
-### 方式 1：使用 mcporter（推荐，OpenClaw 用户）
+### 推荐方案：systemd + mcporter（OpenClaw 用户）
+
+**架构**：
+```
+mcporter → stdio-bridge → WebSocket → Firefox Extension
+                ↑
+         systemd 服务保持运行
+```
+
+**1. 安装并启动 systemd 服务**
+
+```bash
+# 复制服务文件
+cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
+
+# 启用并启动
+systemctl --user daemon-reload
+systemctl --user enable firefox-mcp
+systemctl --user start firefox-mcp
+
+# 验证状态
+systemctl --user status firefox-mcp
+curl http://localhost:34567/health
+```
+
+**2. 配置 mcporter**
 
 编辑 `~/.mcporter/mcporter.json`：
 
@@ -173,7 +198,7 @@ client.disconnect();
 }
 ```
 
-使用 mcporter 调用：
+**3. 使用 mcporter 调用**
 
 ```bash
 # 列出工具
@@ -188,7 +213,9 @@ mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
 
 📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md)
 
-### 方式 2：手动启动服务器
+### 替代方案：手动启动服务器
+
+如果不使用 systemd，可以手动启动服务器：
 
 ```bash
 cd mcp-server
@@ -196,7 +223,7 @@ npm install
 node ws-server-v2.js
 ```
 
-服务器默认运行在 `ws://localhost:34567`
+然后配置 mcporter 同上。注意：手动启动的服务器在终端关闭后会停止。
 
 ## 开发
 

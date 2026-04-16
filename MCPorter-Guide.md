@@ -42,24 +42,59 @@ cd ..
 2. 点击"临时载入附加组件"
 3. 选择 `extension/manifest.json`
 
-### 3. 启动 MCP 服务器
+### 3. 启动 MCP 服务器（systemd 推荐）
 
-mcporter 会自动管理服务器，无需手动启动。当你调用 `mcporter list firefox-mcp` 或 `mcporter call firefox-mcp.xxx` 时，mcporter 会自动启动服务器。
+**方案 A：使用 systemd（推荐，生产环境）**
 
-**验证服务器状态**：
+systemd 会保持服务器持续运行，即使用户注销也不会停止。
 
 ```bash
-# 检查服务器是否响应
-curl http://localhost:34567/health
+# 复制服务文件
+cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
 
+# 重新加载 systemd 配置
+systemctl --user daemon-reload
+
+# 启用服务（开机自动启动）
+systemctl --user enable firefox-mcp
+
+# 启动服务
+systemctl --user start firefox-mcp
+
+# 验证状态
+systemctl --user status firefox-mcp
+
+# 测试服务器响应
+curl http://localhost:34567/health
 # 应返回：{"status":"ok","firefoxConnected":true}
 ```
 
-**手动启动（调试时使用）**：
+**常用命令**：
 
 ```bash
-node mcp-server/ws-server-v2.js
+# 查看状态
+systemctl --user status firefox-mcp
+
+# 重启服务
+systemctl --user restart firefox-mcp
+
+# 停止服务
+systemctl --user stop firefox-mcp
+
+# 查看日志
+journalctl --user -u firefox-mcp -f
 ```
+
+**方案 B：手动启动（开发调试）**
+
+```bash
+cd mcp-server
+node ws-server-v2.js
+```
+
+注意：手动启动的服务器在关闭终端后会停止，适合开发和调试使用。
+
+### 4. 配置 mcporter
 
 ### 4. 配置 mcporter
 
@@ -262,9 +297,9 @@ done
 
 ## 故障排除
 
-### 问题 1："WebSocket not connected"
+### 问题 1："WebSocket not connected" 或 "Connection refused"
 
-**原因**：Firefox MCP 服务器未运行或 Firefox 扩展未连接。
+**原因**：Firefox MCP 服务器未运行。
 
 **解决**：
 ```bash
@@ -274,8 +309,22 @@ systemctl --user status firefox-mcp
 # 如果未运行，启动它
 systemctl --user start firefox-mcp
 
-# 检查 Firefox 扩展是否已安装并启用
-# 访问 about:addons 确认扩展状态
+# 验证服务器响应
+curl http://localhost:34567/health
+```
+
+### 问题 2：mcporter 显示 "appears offline"
+
+**原因**：WebSocket 服务器未运行，mcporter 无法连接。
+
+**解决**：
+```bash
+# 确保 systemd 服务已启用并运行
+systemctl --user enable firefox-mcp
+systemctl --user start firefox-mcp
+
+# 检查服务日志
+journalctl --user -u firefox-mcp -n 50
 ```
 
 ### 问题 2："Connection refused"

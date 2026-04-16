@@ -54,24 +54,25 @@ mcporter call firefox-mcp.firefox_navigate url="https://example.com"
 2. 点击"临时载入附加组件"
 3. 选择 `extension/manifest.json`
 
-### 2. 启动 MCP 服务器
+### 2. 启动 MCP 服务器（systemd 推荐）
 
-**方式 1：使用 mcporter（推荐）**
+**方式 1：使用 systemd（推荐，生产环境）**
 
-配置 `~/.mcporter/mcporter.json`：
+```bash
+# 复制服务文件
+cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
 
-```json
-{
-  "mcpServers": {
-    "firefox-mcp": {
-      "command": "node",
-      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
-    }
-  }
-}
+# 启用并启动
+systemctl --user daemon-reload
+systemctl --user enable firefox-mcp
+systemctl --user start firefox-mcp
+
+# 验证状态
+systemctl --user status firefox-mcp
+curl http://localhost:34567/health
 ```
 
-**方式 2：手动启动**
+**方式 2：手动启动（开发调试）**
 
 ```bash
 cd mcp-server
@@ -79,7 +80,7 @@ npm install
 node ws-server-v2.js
 ```
 
-服务器运行在 `ws://localhost:34567`
+注意：手动启动的服务器在关闭终端后会停止。
 
 ### 3. 验证安装
 
