@@ -1,0 +1,2 @@
+#!/bin/bash
+~/.openclaw/firefox-mcp/bin/firefox-mcp firefox_get_current_url

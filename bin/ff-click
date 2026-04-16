@@ -1,0 +1,7 @@
+#!/bin/bash
+SELECTOR=$1
+if [ -z "$SELECTOR" ]; then
+    echo "Usage: ff-click <css-selector>"
+    exit 1
+fi
+~/.openclaw/firefox-mcp/bin/firefox-mcp firefox_click "{\"selector\": \"$SELECTOR\"}"

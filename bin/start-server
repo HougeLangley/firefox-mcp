@@ -1,0 +1,5 @@
+#!/bin/bash
+# Start Firefox MCP server
+
+cd /var/home/houge/.openclaw/firefox-mcp/mcp-server
+exec node ws-server-v2.js

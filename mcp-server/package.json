@@ -1,0 +1,13 @@
+{
+  "name": "firefox-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Firefox browser automation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ws": "^8.20.0"
+  }
+}

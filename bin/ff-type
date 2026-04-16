@@ -1,0 +1,8 @@
+#!/bin/bash
+SELECTOR=$1
+TEXT=$2
+if [ -z "$SELECTOR" ] || [ -z "$TEXT" ]; then
+    echo "Usage: ff-type <css-selector> <text>"
+    exit 1
+fi
+~/.openclaw/firefox-mcp/bin/firefox-mcp firefox_type "{\"selector\": \"$SELECTOR\", \"text\": \"$TEXT\"}"

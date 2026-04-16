@@ -1,0 +1,4 @@
+#!/bin/bash
+OUTPUT=${1:-screenshot.png}
+~/.openclaw/firefox-mcp/bin/firefox-mcp firefox_screenshot | jq -r '.screenshot' | base64 -d > "$OUTPUT"
+echo "Screenshot saved to $OUTPUT"

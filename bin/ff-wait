@@ -1,0 +1,3 @@
+#!/bin/bash
+SECONDS=${1:-2}
+~/.openclaw/firefox-mcp/bin/firefox-mcp firefox_wait "{\"duration\": $SECONDS}"

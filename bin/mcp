@@ -1,0 +1,13 @@
+#!/bin/bash
+# Firefox MCP 控制工具 - 修复版
+
+NODE_SCRIPT="$HOME/.openclaw/firefox-mcp/lib/mcp-client-fixed.js"
+
+# 检查 Node.js 脚本是否存在
+if [ ! -f "$NODE_SCRIPT" ]; then
+    echo "错误: 找不到 MCP 客户端脚本"
+    exit 1
+fi
+
+# 运行 Node.js 脚本
+node "$NODE_SCRIPT" "$@"

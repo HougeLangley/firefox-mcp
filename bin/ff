@@ -1,0 +1,89 @@
+#!/bin/bash
+# Firefox MCP 统一命令行工具
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+command=$1
+shift
+
+case $command in
+  navigate|nav)
+    node "$LIB_DIR/mcp-client.js" navigate "$@"
+    ;;
+  smart-navigate|snav)
+    node "$LIB_DIR/smart-navigate.js" "$@"
+    ;;
+  url)
+    node "$LIB_DIR/mcp-client.js" url
+    ;;
+  title)
+    node "$LIB_DIR/mcp-client.js" title
+    ;;
+  content|text)
+    node "$LIB_DIR/mcp-client.js" content
+    ;;
+  wait)
+    node "$LIB_DIR/mcp-client.js" wait "$@"
+    ;;
+  click)
+    node "$LIB_DIR/mcp-client.js" click "$@"
+    ;;
+  type)
+    node "$LIB_DIR/mcp-client.js" type "$@"
+    ;;
+  js|exec)
+    node "$LIB_DIR/mcp-client.js" js "$@"
+    ;;
+  tabs)
+    node "$LIB_DIR/mcp-client.js" tabs
+    ;;
+  news)
+    node "$LIB_DIR/news-fetcher.js"
+    ;;
+  simulate-click|sclick)
+    node "$LIB_DIR/mouse-simulator.js" click "$@"
+    ;;
+  simulate-type|stype)
+    node "$LIB_DIR/mouse-simulator.js" type "$@"
+    ;;
+  x-post|tweet)
+    node "$LIB_DIR/x-poster.js" "$@"
+    ;;
+  help|--help|-h)
+    cat << 'EOF'
+Firefox MCP Tool
+
+Usage: ff <command> [args]
+
+Commands:
+  navigate <url>              Navigate to URL
+  smart-navigate <url>        Navigate with auto-wait
+  url                         Get current URL
+  title                       Get page title
+  content                     Get page content
+  wait [seconds]              Wait (default 2s)
+  click <selector>            Click element (basic)
+  type <selector> <text>      Type text (basic)
+  js <code>                   Execute JavaScript
+  tabs                        Get all tabs
+  news                        Fetch Phoronix news
+  simulate-click <selector>   Simulate real mouse click
+  simulate-type <selector> <text>  Simulate realistic typing
+  x-post <text>               Post to X (Twitter)
+
+Examples:
+  ff navigate https://www.phoronix.com
+  ff smart-navigate https://www.google.com
+  ff simulate-click "button#submit"
+  ff simulate-type "div[contenteditable]" "Hello World"
+  ff x-post "My first automated tweet!"
+  ff news
+EOF
+    ;;
+  *)
+    echo "Unknown command: $command"
+    echo "Run 'ff help' for usage"
+    exit 1
+    ;;
+esac
