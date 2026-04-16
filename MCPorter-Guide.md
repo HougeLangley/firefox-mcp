@@ -44,21 +44,18 @@ cd ..
 
 ### 3. 启动 MCP 服务器
 
-**方式 A：使用 systemd（推荐）**
+mcporter 会自动管理服务器，无需手动启动。当你调用 `mcporter list firefox-mcp` 或 `mcporter call firefox-mcp.xxx` 时，mcporter 会自动启动服务器。
+
+**验证服务器状态**：
 
 ```bash
-# 复制服务文件
-cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
+# 检查服务器是否响应
+curl http://localhost:34567/health
 
-# 启用并启动
-systemctl --user enable firefox-mcp
-systemctl --user start firefox-mcp
-
-# 查看状态
-systemctl --user status firefox-mcp
+# 应返回：{"status":"ok","firefoxConnected":true}
 ```
 
-**方式 B：手动启动**
+**手动启动（调试时使用）**：
 
 ```bash
 node mcp-server/ws-server-v2.js

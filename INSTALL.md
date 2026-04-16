@@ -1,115 +1,140 @@
-# Firefox MCP 扩展安装指南
+# Firefox MCP 安装指南
 
-## 安装包位置
-`~/.openclaw/firefox-mcp/firefox-mcp-v1.0.0.xpi`
+## 快速开始（OpenClaw 用户推荐）
 
-## 安装步骤
-
-### 方法一：从文件安装（推荐）
-
-1. **打开 Firefox**
-2. **访问扩展管理页面**
-   - 地址栏输入：`about:addons`
-   - 或点击菜单 → 扩展和主题
-
-3. **安装扩展**
-   - 点击齿轮图标（⚙️）
-   - 选择"从文件安装附加组件..."
-   - 选择：`~/.openclaw/firefox-mcp/firefox-mcp-v1.0.0.xpi`
-   - 点击"添加”确认安装
-
-4. **连接 MCP 服务器**
-   - 点击工具栏上的 MCP 扩展图标
-   - 点击"Connect"按钮
-   - 状态应显示为"Connected"
-
-### 方法二：开发者模式安装
-
-1. **打开 Firefox**
-2. **访问调试页面**
-   - 地址栏输入：`about:debugging#/runtime/this-firefox`
-
-3. **加载扩展**
-   - 点击"临时载入附加组件"
-   - 选择：`~/.openclaw/firefox-mcp/extension/manifest.json`
-
-4. **注意**：此方法每次重启 Firefox 后需要重新加载
-
-## 验证安装
-
-安装完成后，运行以下命令测试：
+如果你使用 OpenClaw，推荐通过 mcporter 使用 Firefox MCP：
 
 ```bash
-# 检查 MCP 服务器状态
-curl http://localhost:34567/health
+# 1. 克隆仓库
+git clone https://github.com/HougeLangley/firefox-mcp.git
+cd firefox-mcp
 
-# 应该返回：
-# {"status":"ok","firefoxConnected":true}
+# 2. 安装依赖
+cd mcp-server && npm install && cd ..
+cd lib && npm install ws && cd ..
+
+# 3. 配置 mcporter
+cat >> ~/.mcporter/mcporter.json << 'EOF'
+{
+  "mcpServers": {
+    "firefox-mcp": {
+      "command": "node",
+      "args": ["$(pwd)/mcp-server/stdio-bridge-v2.js"]
+    }
+  }
+}
+EOF
+
+# 4. 安装 Firefox 扩展
+# 下载 firefox-mcp-v1.0.0.xpi 并安装到 Firefox
+
+# 5. 开始使用
+mcporter list firefox-mcp
+mcporter call firefox-mcp.firefox_navigate url="https://example.com"
+```
+
+📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md)
+
+---
+
+## 标准安装
+
+### 1. 安装 Firefox 扩展
+
+**方法 A：直接安装签名版（推荐）**
+
+1. 下载 [firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.0/firefox-mcp-v1.0.0.xpi)
+2. 打开 Firefox，访问 `about:addons`
+3. 点击齿轮图标 → "从文件安装附加组件"
+4. 选择下载的 XPI 文件
+
+**方法 B：开发者模式（开发使用）**
+
+1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`
+2. 点击"临时载入附加组件"
+3. 选择 `extension/manifest.json`
+
+### 2. 启动 MCP 服务器
+
+**方式 1：使用 mcporter（推荐）**
+
+配置 `~/.mcporter/mcporter.json`：
+
+```json
+{
+  "mcpServers": {
+    "firefox-mcp": {
+      "command": "node",
+      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
+    }
+  }
+}
+```
+
+**方式 2：手动启动**
+
+```bash
+cd mcp-server
+npm install
+node ws-server-v2.js
+```
+
+服务器运行在 `ws://localhost:34567`
+
+### 3. 验证安装
+
+```bash
+# 检查服务器状态
+curl http://localhost:34567/health
+# 应返回：{"status":"ok","firefoxConnected":true}
+
+# 测试 mcporter
+mcporter list firefox-mcp
 ```
 
 ## 使用方法
 
-### 1. CLI 工具
-
-```bash
-# 导航到指定 URL
-~/.openclaw/firefox-mcp/bin/ff-navigate https://phoronix.com
-
-# 获取页面内容
-~/.openclaw/firefox-mcp/bin/ff-content
-
-# 点击元素
-~/.openclaw/firefox-mcp/bin/ff-click 100 200
-
-# 输入文本
-~/.openclaw/firefox-mcp/bin/ff-type "Hello World"
-
-# 截图
-~/.openclaw/firefox-mcp/bin/ff-screenshot
-```
-
-### 2. HTTP API
+### 使用 mcporter（推荐）
 
 ```bash
 # 导航
-curl "http://localhost:34567/navigate?url=https://phoronix.com"
+mcporter call firefox-mcp.firefox_navigate url="https://phoronix.com"
 
-# 获取内容
-curl http://localhost:34567/content
+# 获取信息
+mcporter call firefox-mcp.firefox_get_page_title
+mcporter call firefox-mcp.firefox_get_page_content
 
-# 点击
-curl "http://localhost:34567/click?x=100&y=200"
+# 滚动
+mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
 
-# 输入
-curl -X POST "http://localhost:34567/type" -d "text=Hello"
+# 截图
+mcporter call firefox-mcp.firefox_screenshot
 ```
 
-## 自动启动 MCP 服务器
-
-创建 systemd 用户服务：
+### 使用 CLI 工具
 
 ```bash
-# 创建服务文件
-mkdir -p ~/.config/systemd/user
-cat > ~/.config/systemd/user/firefox-mcp.service << 'EOF'
-[Unit]
-Description=Firefox MCP Server
-After=network.target
+# 导航
+./bin/mcp navigate https://example.com
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/node %h/.openclaw/firefox-mcp/mcp-server/ws-server-v2.js
-Restart=always
-RestartSec=5
+# 滚动
+./bin/mcp scroll
 
-[Install]
-WantedBy=default.target
-EOF
+# 获取内容
+./bin/mcp content
+```
 
-# 启用并启动服务
-systemctl --user daemon-reload
-systemctl --user enable firefox-mcp.service
-systemctl --user start firefox-mcp.service
+### 使用 JavaScript API
+
+```javascript
+const MCPClient = require('./lib/mcp-client-fixed');
+const client = new MCPClient();
+
+await client.connect();
+await client.navigate('https://example.com');
+await client.scrollDown(800);
+console.log(await client.getTitle());
+client.disconnect();
 ```
 
 ## 故障排除
@@ -117,18 +142,26 @@ systemctl --user start firefox-mcp.service
 ### 扩展无法连接
 1. 检查 MCP 服务器是否运行：`curl http://localhost:34567/health`
 2. 重新点击扩展图标，点击"Reconnect"
-3. 检查 Firefox 控制台是否有错误（F12 → 控制台）
+3. 检查 Firefox 控制台（F12 → 控制台）
+
+### mcporter 无法调用
+1. 检查配置文件路径：`cat ~/.mcporter/mcporter.json`
+2. 验证脚本存在：`ls -la mcp-server/stdio-bridge-v2.js`
+3. 检查服务器状态：`curl http://localhost:34567/health`
 
 ### 权限问题
-如果安装时提示权限不足，尝试：
+如果安装时提示权限不足：
 1. 在 `about:config` 中设置 `xpinstall.signatures.required` 为 `false`
 2. 或使用开发者模式安装
 
-## 更新扩展
+## 更新
 
-重新运行打包脚本：
 ```bash
-~/.openclaw/firefox-mcp/package-extension.sh
+git pull origin main
+# 重新安装扩展（如果更新了扩展代码）
 ```
 
-然后在 Firefox 中重新安装新版本。
+## 获取帮助
+
+- GitHub Issues: https://github.com/HougeLangley/firefox-mcp/issues
+- OpenClaw 社区: https://discord.com/invite/clawd

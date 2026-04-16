@@ -158,16 +158,45 @@ client.disconnect();
 
 ## 配置
 
-### 系统服务（systemd）
+### 方式 1：使用 mcporter（推荐，OpenClaw 用户）
+
+编辑 `~/.mcporter/mcporter.json`：
+
+```json
+{
+  "mcpServers": {
+    "firefox-mcp": {
+      "command": "node",
+      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
+    }
+  }
+}
+```
+
+使用 mcporter 调用：
 
 ```bash
-# 复制服务文件
-cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
+# 列出工具
+mcporter list firefox-mcp
 
-# 启用并启动
-systemctl --user enable firefox-mcp
-systemctl --user start firefox-mcp
+# 导航到网页
+mcporter call firefox-mcp.firefox_navigate url="https://example.com"
+
+# 滚动页面
+mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
 ```
+
+📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md)
+
+### 方式 2：手动启动服务器
+
+```bash
+cd mcp-server
+npm install
+node ws-server-v2.js
+```
+
+服务器默认运行在 `ws://localhost:34567`
 
 ## 开发
 
