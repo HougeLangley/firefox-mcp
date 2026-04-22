@@ -1,89 +1,197 @@
-#!/bin/bash
-# Firefox MCP 统一命令行工具
+#!/usr/bin/env node
+/**
+ * Firefox MCP Direct CLI v1.0.2 - Enhanced Version
+ * Bypass mcporter, use WebSocket directly
+ */
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+// Load ws from mcp-server node_modules
+const path = require('path');
+const mcpServerDir = path.join(process.env.HOME, '.openclaw', 'firefox-mcp', 'mcp-server');
+const WebSocket = require(path.join(mcpServerDir, 'node_modules', 'ws'));
 
-command=$1
-shift
+const MCP_SERVER_URL = 'ws://localhost:34567/client';
 
-case $command in
-  navigate|nav)
-    node "$LIB_DIR/mcp-client.js" navigate "$@"
-    ;;
-  smart-navigate|snav)
-    node "$LIB_DIR/smart-navigate.js" "$@"
-    ;;
-  url)
-    node "$LIB_DIR/mcp-client.js" url
-    ;;
-  title)
-    node "$LIB_DIR/mcp-client.js" title
-    ;;
-  content|text)
-    node "$LIB_DIR/mcp-client.js" content
-    ;;
-  wait)
-    node "$LIB_DIR/mcp-client.js" wait "$@"
-    ;;
-  click)
-    node "$LIB_DIR/mcp-client.js" click "$@"
-    ;;
-  type)
-    node "$LIB_DIR/mcp-client.js" type "$@"
-    ;;
-  js|exec)
-    node "$LIB_DIR/mcp-client.js" js "$@"
-    ;;
-  tabs)
-    node "$LIB_DIR/mcp-client.js" tabs
-    ;;
-  news)
-    node "$LIB_DIR/news-fetcher.js"
-    ;;
-  simulate-click|sclick)
-    node "$LIB_DIR/mouse-simulator.js" click "$@"
-    ;;
-  simulate-type|stype)
-    node "$LIB_DIR/mouse-simulator.js" type "$@"
-    ;;
-  x-post|tweet)
-    node "$LIB_DIR/x-poster.js" "$@"
-    ;;
-  help|--help|-h)
-    cat << 'EOF'
-Firefox MCP Tool
+function callFirefoxMcp(toolName, args = {}) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(MCP_SERVER_URL);
+    let initialized = false;
+    
+    ws.on('open', () => {
+      ws.send(JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2024-11-05' }
+      }));
+    });
+    
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data);
+        
+        if (msg.id === 1 && msg.result) {
+          initialized = true;
+          ws.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: {
+              name: toolName,
+              arguments: args
+            }
+          }));
+        } else if (msg.id === 2) {
+          ws.close();
+          if (msg.error) {
+            reject(new Error(msg.error.message));
+          } else {
+            try {
+              const text = msg.result?.content?.[0]?.text;
+              const result = text ? JSON.parse(text) : msg.result;
+              resolve(result);
+            } catch (e) {
+              resolve(msg.result);
+            }
+          }
+        }
+      } catch (e) {
+        reject(e);
+      }
+    });
+    
+    ws.on('error', (err) => reject(err));
+    setTimeout(() => {
+      ws.close();
+      reject(new Error('Timeout'));
+    }, 35000);
+  });
+}
 
-Usage: ff <command> [args]
+async function main() {
+  const [,, tool, ...rest] = process.argv;
+  
+  if (!tool) {
+    console.log('Firefox MCP Direct CLI v1.0.2');
+    console.log('Usage: ff <tool> [args]');
+    console.log('');
+    console.log('Navigation:');
+    console.log('  ff navigate <url>          Navigate to URL');
+    console.log('  ff refresh                 Refresh page');
+    console.log('  ff back                    Go back in history');
+    console.log('  ff forward                 Go forward in history');
+    console.log('');
+    console.log('Information:');
+    console.log('  ff get_tabs                List all tabs');
+    console.log('  ff get_current_url         Get current URL');
+    console.log('  ff get_page_title          Get page title');
+    console.log('  ff get_page_content        Get page content');
+    console.log('  ff screenshot              Take screenshot');
+    console.log('');
+    console.log('Interaction:');
+    console.log('  ff click <selector>        Click element');
+    console.log('  ff type <selector> <text>  Type text');
+    console.log('  ff clear <selector>        Clear input field');
+    console.log('  ff select <selector> <val> Select dropdown option');
+    console.log('  ff hover <selector>        Hover over element');
+    console.log('  ff press <key> [selector]  Press keyboard key');
+    console.log('');
+    console.log('Scrolling:');
+    console.log('  ff scroll [px]             Scroll down (default 800px)');
+    console.log('  ff scrollup [px]           Scroll up (default 800px)');
+    console.log('');
+    console.log('JavaScript:');
+    console.log('  ff execute_js <code>       Execute JavaScript');
+    console.log('  ff wait <seconds>          Wait');
+    console.log('');
+    console.log('Examples:');
+    console.log('  ff navigate https://example.com');
+    console.log('  ff scroll 1000');
+    console.log('  ff press Enter textarea[name="q"]');
+    console.log('  ff execute_js "document.title"');
+    process.exit(1);
+  }
+  
+  try {
+    let result;
+    
+    switch (tool) {
+      // Navigation
+      case 'navigate':
+        result = await callFirefoxMcp('firefox_navigate', { url: rest[0] });
+        break;
+      case 'refresh':
+        result = await callFirefoxMcp('firefox_refresh', {});
+        break;
+      case 'back':
+        result = await callFirefoxMcp('firefox_go_back', {});
+        break;
+      case 'forward':
+        result = await callFirefoxMcp('firefox_go_forward', {});
+        break;
+        
+      // Information
+      case 'get_tabs':
+        result = await callFirefoxMcp('firefox_get_tabs', {});
+        break;
+      case 'get_current_url':
+        result = await callFirefoxMcp('firefox_get_current_url', {});
+        break;
+      case 'get_page_title':
+        result = await callFirefoxMcp('firefox_get_page_title', {});
+        break;
+      case 'get_page_content':
+        result = await callFirefoxMcp('firefox_get_page_content', {});
+        break;
+      case 'screenshot':
+        result = await callFirefoxMcp('firefox_screenshot', {});
+        break;
+        
+      // Interaction
+      case 'click':
+        result = await callFirefoxMcp('firefox_click', { selector: rest[0] });
+        break;
+      case 'type':
+        result = await callFirefoxMcp('firefox_type', { selector: rest[0], text: rest.slice(1).join(' ') });
+        break;
+      case 'clear':
+        result = await callFirefoxMcp('firefox_clear', { selector: rest[0] });
+        break;
+      case 'select':
+        result = await callFirefoxMcp('firefox_select', { selector: rest[0], value: rest[1] });
+        break;
+      case 'hover':
+        result = await callFirefoxMcp('firefox_hover', { selector: rest[0] });
+        break;
+      case 'press':
+        result = await callFirefoxMcp('firefox_press_key', { key: rest[0], selector: rest[1] || null });
+        break;
+        
+      // Scrolling
+      case 'scroll':
+        result = await callFirefoxMcp('firefox_scroll', { direction: 'down', pixels: parseInt(rest[0]) || 800 });
+        break;
+      case 'scrollup':
+        result = await callFirefoxMcp('firefox_scroll', { direction: 'up', pixels: parseInt(rest[0]) || 800 });
+        break;
+        
+      // JavaScript
+      case 'execute_js':
+        result = await callFirefoxMcp('firefox_execute_js', { code: rest.join(' ') });
+        break;
+      case 'wait':
+        result = await callFirefoxMcp('firefox_wait', { duration: parseInt(rest[0]) || 2 });
+        break;
+        
+      default:
+        console.error('Unknown tool:', tool);
+        process.exit(1);
+    }
+    
+    console.log(JSON.stringify(result, null, 2));
+  } catch (err) {
+    console.error('Error:', err.message);
+    process.exit(1);
+  }
+}
 
-Commands:
-  navigate <url>              Navigate to URL
-  smart-navigate <url>        Navigate with auto-wait
-  url                         Get current URL
-  title                       Get page title
-  content                     Get page content
-  wait [seconds]              Wait (default 2s)
-  click <selector>            Click element (basic)
-  type <selector> <text>      Type text (basic)
-  js <code>                   Execute JavaScript
-  tabs                        Get all tabs
-  news                        Fetch Phoronix news
-  simulate-click <selector>   Simulate real mouse click
-  simulate-type <selector> <text>  Simulate realistic typing
-  x-post <text>               Post to X (Twitter)
-
-Examples:
-  ff navigate https://www.phoronix.com
-  ff smart-navigate https://www.google.com
-  ff simulate-click "button#submit"
-  ff simulate-type "div[contenteditable]" "Hello World"
-  ff x-post "My first automated tweet!"
-  ff news
-EOF
-    ;;
-  *)
-    echo "Unknown command: $command"
-    echo "Run 'ff help' for usage"
-    exit 1
-    ;;
-esac
+main();

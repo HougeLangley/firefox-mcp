@@ -134,6 +134,22 @@ async function executeTool(tool, params) {
       return await executeJavaScript(params.code);
     case 'firefox_wait':
       return await wait(params.duration);
+    case 'firefox_scroll':
+      return await scrollPage(params.direction || 'down', params.pixels || 800);
+    case 'firefox_press_key':
+      return await pressKey(params.key, params.selector);
+    case 'firefox_select':
+      return await selectOption(params.selector, params.value);
+    case 'firefox_clear':
+      return await clearInput(params.selector);
+    case 'firefox_hover':
+      return await hoverElement(params.selector);
+    case 'firefox_refresh':
+      return await refreshPage();
+    case 'firefox_go_back':
+      return await goBack();
+    case 'firefox_go_forward':
+      return await goForward();
     default:
       throw new Error(`Unknown tool: ${tool}`);
   }
@@ -247,6 +263,96 @@ async function executeJavaScript(code) {
 async function wait(duration) {
   await new Promise(r => setTimeout(r, duration * 1000));
   return { success: true };
+}
+
+async function scrollPage(direction = 'down', pixels = 800) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const scrollY = direction === 'up' ? -pixels : pixels;
+  await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
+      window.scrollBy(0, ${scrollY});
+      return { scrolled: true, direction: '${direction}', pixels: ${pixels}, currentY: window.scrollY };
+    })()`
+  });
+  return { success: true, direction, pixels };
+}
+
+async function pressKey(key, selector = null) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
+      ${selector ? `const el = document.querySelector(${JSON.stringify(selector)});
+      if (el) el.focus();` : ''}
+      const event = new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true });
+      (${selector ? 'el' : 'document'}).dispatchEvent(event);
+      const eventUp = new KeyboardEvent('keyup', { key: ${JSON.stringify(key)}, bubbles: true });
+      (${selector ? 'el' : 'document'}).dispatchEvent(eventUp);
+      return { success: true, key: ${JSON.stringify(key)}, selector: ${JSON.stringify(selector)} };
+    })()`
+  });
+  return results[0];
+}
+
+async function selectOption(selector, value) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) throw new Error('Element not found: ${selector}');
+      el.value = ${JSON.stringify(value)};
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return { success: true, selector: ${JSON.stringify(selector)}, value: ${JSON.stringify(value)} };
+    })()`
+  });
+  return results[0];
+}
+
+async function clearInput(selector) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) throw new Error('Element not found: ${selector}');
+      el.value = '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return { success: true, selector: ${JSON.stringify(selector)}, cleared: true };
+    })()`
+  });
+  return results[0];
+}
+
+async function hoverElement(selector) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) throw new Error('Element not found: ${selector}');
+      const event = new MouseEvent('mouseover', { bubbles: true });
+      el.dispatchEvent(event);
+      return { success: true, selector: ${JSON.stringify(selector)}, hovered: true };
+    })()`
+  });
+  return results[0];
+}
+
+async function refreshPage() {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  await browser.tabs.reload(tab.id);
+  return { success: true, refreshed: true };
+}
+
+async function goBack() {
+  await browser.tabs.executeScript((await browser.tabs.query({ active: true, currentWindow: true }))[0].id, {
+    code: `(function() { history.back(); return { success: true, action: 'back' }; })()`
+  });
+  return { success: true, action: 'back' };
+}
+
+async function goForward() {
+  await browser.tabs.executeScript((await browser.tabs.query({ active: true, currentWindow: true }))[0].id, {
+    code: `(function() { history.forward(); return { success: true, action: 'forward' }; })()`
+  });
+  return { success: true, action: 'forward' };
 }
 
 function updateIcon() {

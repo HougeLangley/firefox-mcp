@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "OpenClaw Browser MCP",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "MCP server for Firefox browser automation via WebSocket",
   
   "browser_specific_settings": {
@@ -14,7 +14,6 @@
   "permissions": [
     "tabs",
     "activeTab",
-    "scripting",
     "contextMenus",
     "downloads",
     "history",
