@@ -28,10 +28,11 @@ node ws-server-v2.js
 
 **方法 A：直接安装签名版（推荐）**
 
-| 版本 | 文件 | 日期 |
-|------|------|------|
-| **v1.0.1** | [firefox-mcp-v1.0.1.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.1/firefox-mcp-v1.0.1.xpi) | 2026-04-22 |
-| v1.0.0 | [firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.0/firefox-mcp-v1.0.0.xpi) | 2026-04-16 |
+| 版本 | 文件 | 日期 | 说明 |
+|------|------|------|------|
+| **v1.0.3** | [firefox-mcp-v1.0.3.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.3/firefox-mcp-v1.0.3.xpi) | 2026-04-22 | 新增滚动、按键、导航等功能 |
+| v1.0.1 | [firefox-mcp-v1.0.1.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.1/firefox-mcp-v1.0.1.xpi) | 2026-04-22 | Bug 修复版 |
+| v1.0.0 | [firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.0/firefox-mcp-v1.0.0.xpi) | 2026-04-16 | 初始版本 |
 
 1. 下载对应版本的 XPI 文件
 2. 打开 Firefox，访问 `about:addons`
@@ -246,6 +247,21 @@ node test-connection.js
 ```
 
 ## 更新日志
+
+### v1.0.3 (2026-04-22)
+**新增功能：**
+- **firefox_scroll** - 页面滚动（支持上下方向和像素数）
+- **firefox_press_key** - 模拟键盘按键
+- **firefox_select** - 下拉框选择
+- **firefox_clear** - 清空输入框
+- **firefox_hover** - 鼠标悬停
+- **firefox_refresh** - 刷新页面
+- **firefox_go_back** - 后退浏览历史
+- **firefox_go_forward** - 前进浏览历史
+
+**改进：**
+- 移除 `scripting` 权限，兼容 Firefox 91+
+- 新增 `ff` 独立 CLI 脚本，无需 mcporter 即可控制 Firefox
 
 ### v1.0.1 (2026-04-22)
 - **修复 navigate**: `browser.tabs.update()` 返回旧 URL → 改用 `tabs.onUpdated` 监听页面加载完成
