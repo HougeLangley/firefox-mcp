@@ -220,12 +220,12 @@ async function getPageContent() {
 async function clickElement(selector) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found: ${selector}');
+    code: `(function(sel) {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error('Element not found: ' + sel);
       el.click();
-      return { success: true, clicked: selector };
-    })()`
+      return { success: true, clicked: sel };
+    })(${JSON.stringify(selector)})`
   });
   return results[0];
 }
@@ -233,16 +233,16 @@ async function clickElement(selector) {
 async function typeText(selector, text, submit = false) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found: ${selector}');
+    code: `(function(sel, txt, sub) {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error('Element not found: ' + sel);
       el.focus();
-      el.value = ${JSON.stringify(text)};
+      el.value = txt;
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      ${submit ? 'if (el.form) el.form.submit();' : ''}
-      return { success: true, selector: ${JSON.stringify(selector)}, text: ${JSON.stringify(text)} };
-    })()`
+      if (sub && el.form) el.form.submit();
+      return { success: true, selector: sel, text: txt };
+    })(${JSON.stringify(selector)}, ${JSON.stringify(text)}, ${JSON.stringify(submit)})`
   });
   return results[0];
 }
@@ -280,15 +280,16 @@ async function scrollPage(direction = 'down', pixels = 800) {
 async function pressKey(key, selector = null) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      ${selector ? `const el = document.querySelector(${JSON.stringify(selector)});
+    code: `(function(key, sel) {
+      ${selector ? `const el = document.querySelector(sel);
       if (el) el.focus();` : ''}
-      const event = new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true });
-      (${selector ? 'el' : 'document'}).dispatchEvent(event);
-      const eventUp = new KeyboardEvent('keyup', { key: ${JSON.stringify(key)}, bubbles: true });
-      (${selector ? 'el' : 'document'}).dispatchEvent(eventUp);
-      return { success: true, key: ${JSON.stringify(key)}, selector: ${JSON.stringify(selector)} };
-    })()`
+      const target = sel ? document.querySelector(sel) : document;
+      const event = new KeyboardEvent('keydown', { key: key, bubbles: true });
+      target.dispatchEvent(event);
+      const eventUp = new KeyboardEvent('keyup', { key: key, bubbles: true });
+      target.dispatchEvent(eventUp);
+      return { success: true, key: key, selector: sel };
+    })(${JSON.stringify(key)}, ${JSON.stringify(selector)})`
   });
   return results[0];
 }
@@ -296,13 +297,13 @@ async function pressKey(key, selector = null) {
 async function selectOption(selector, value) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found: ${selector}');
-      el.value = ${JSON.stringify(value)};
+    code: `(function(sel, val) {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error('Element not found: ' + sel);
+      el.value = val;
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      return { success: true, selector: ${JSON.stringify(selector)}, value: ${JSON.stringify(value)} };
-    })()`
+      return { success: true, selector: sel, value: val };
+    })(${JSON.stringify(selector)}, ${JSON.stringify(value)})`
   });
   return results[0];
 }
@@ -310,13 +311,13 @@ async function selectOption(selector, value) {
 async function clearInput(selector) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found: ${selector}');
+    code: `(function(sel) {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error('Element not found: ' + sel);
       el.value = '';
       el.dispatchEvent(new Event('input', { bubbles: true }));
-      return { success: true, selector: ${JSON.stringify(selector)}, cleared: true };
-    })()`
+      return { success: true, selector: sel, cleared: true };
+    })(${JSON.stringify(selector)})`
   });
   return results[0];
 }
@@ -324,13 +325,13 @@ async function clearInput(selector) {
 async function hoverElement(selector) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const results = await browser.tabs.executeScript(tab.id, {
-    code: `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found: ${selector}');
+    code: `(function(sel) {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error('Element not found: ' + sel);
       const event = new MouseEvent('mouseover', { bubbles: true });
       el.dispatchEvent(event);
-      return { success: true, selector: ${JSON.stringify(selector)}, hovered: true };
-    })()`
+      return { success: true, selector: sel, hovered: true };
+    })(${JSON.stringify(selector)})`
   });
   return results[0];
 }
