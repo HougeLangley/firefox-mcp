@@ -27,7 +27,13 @@ node ws-server-v2.js
 ### 2. 安装 Firefox 扩展
 
 **方法 A：直接安装签名版（推荐）**
-1. 下载已签名的扩展：[firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/raw/main/firefox-mcp-v1.0.0.xpi)
+
+| 版本 | 文件 | 日期 |
+|------|------|------|
+| **v1.0.1** | [firefox-mcp-v1.0.1.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.1/firefox-mcp-v1.0.1.xpi) | 2026-04-22 |
+| v1.0.0 | [firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.0/firefox-mcp-v1.0.0.xpi) | 2026-04-16 |
+
+1. 下载对应版本的 XPI 文件
 2. 打开 Firefox，访问 `about:addons`
 3. 点击齿轮图标 -> "从文件安装附加组件"
 4. 选择下载的 XPI 文件
@@ -238,6 +244,17 @@ node ws-server-v2.js
 ```bash
 node test-connection.js
 ```
+
+## 更新日志
+
+### v1.0.1 (2026-04-22)
+- **修复 navigate**: `browser.tabs.update()` 返回旧 URL → 改用 `tabs.onUpdated` 监听页面加载完成
+- **修复 execute_js**: `executeScript requires code or file` → 用 IIFE 包装代码
+- **修复 click/type**: `redeclaration of const el` → 所有 `executeScript` 代码字符串用 IIFE 隔离作用域
+
+### v1.0.0 (2026-04-16)
+- 初始版本，支持 10 个 MCP 工具
+- 支持 WebSocket 连接、标签管理、截图、JS 执行等
 
 ## 许可证
 
