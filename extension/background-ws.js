@@ -141,8 +141,31 @@ async function executeTool(tool, params) {
 
 // Tool implementations
 async function navigate(url) {
-  const tab = await browser.tabs.update({ url });
-  return { tabId: tab.id, url: tab.url };
+  const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const tabId = activeTab.id;
+  
+  // 等待页面加载完成
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      browser.tabs.onUpdated.removeListener(onUpdated);
+      reject(new Error('Navigation timeout after 30s'));
+    }, 30000);
+    
+    function onUpdated(updatedTabId, changeInfo, tab) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        clearTimeout(timeout);
+        browser.tabs.onUpdated.removeListener(onUpdated);
+        resolve({ tabId: tab.id, url: tab.url, title: tab.title });
+      }
+    }
+    
+    browser.tabs.onUpdated.addListener(onUpdated);
+    browser.tabs.update(tabId, { url }).catch(err => {
+      clearTimeout(timeout);
+      browser.tabs.onUpdated.removeListener(onUpdated);
+      reject(err);
+    });
+  });
 }
 
 async function getTabs() {
@@ -180,32 +203,32 @@ async function getPageContent() {
 
 async function clickElement(selector) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  await browser.tabs.executeScript(tab.id, {
-    code: `
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
       const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found');
+      if (!el) throw new Error('Element not found: ${selector}');
       el.click();
-      { success: true }
-    `
+      return { success: true, clicked: selector };
+    })()`
   });
-  return { success: true };
+  return results[0];
 }
 
 async function typeText(selector, text, submit = false) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  await browser.tabs.executeScript(tab.id, {
-    code: `
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() {
       const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) throw new Error('Element not found');
+      if (!el) throw new Error('Element not found: ${selector}');
       el.focus();
       el.value = ${JSON.stringify(text)};
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      ${submit ? 'el.form?.submit();' : ''}
-      { success: true }
-    `
+      ${submit ? 'if (el.form) el.form.submit();' : ''}
+      return { success: true, selector: ${JSON.stringify(selector)}, text: ${JSON.stringify(text)} };
+    })()`
   });
-  return { success: true };
+  return results[0];
 }
 
 async function takeScreenshot(fullPage = false) {
@@ -215,7 +238,9 @@ async function takeScreenshot(fullPage = false) {
 
 async function executeJavaScript(code) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  const results = await browser.tabs.executeScript(tab.id, { code });
+  const results = await browser.tabs.executeScript(tab.id, {
+    code: `(function() { return (${code}); })()`
+  });
   return { result: results[0] };
 }
 
