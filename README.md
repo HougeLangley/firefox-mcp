@@ -1,336 +1,245 @@
-# Firefox MCP (Model Context Protocol)
+# Firefox MCP 使用指南
 
-Firefox 浏览器自动化扩展，支持通过 MCP 协议远程控制浏览器。
+> **更新日期**: 2026-04-25
+> **版本**: v1.0.6
+> **控制方式**: WebSocket + MCP 协议（已弃用 mcporter）
 
-## 功能特性
+---
 
-- 🔗 **远程控制** - 通过 WebSocket 连接控制 Firefox
-- 🖱️ **鼠标操作** - 点击、滚动等操作
-- ⌨️ **键盘输入** - 文本输入支持
-- 📸 **截图** - 页面截图功能
-- 🔄 **标签管理** - 获取标签列表、切换标签
-- 📝 **内容提取** - 获取页面文本内容
-- ⚡ **JavaScript 执行** - 在页面执行任意 JS
+## 概述
 
-## 安装
+Firefox MCP (Model Context Protocol) 是一个浏览器自动化扩展，允许 AI 通过 WebSocket 直接控制 Firefox 浏览器。
 
-### 1. 安装服务器
+## 架构
+
+```
+Python 脚本 ←→ WebSocket /client ←→ MCP Server (34567) ←→ WebSocket /firefox ←→ Firefox
+```
+
+## 安装状态
+
+- ✅ 扩展已签名并安装 (v1.0.6)
+- ✅ MCP 服务器运行中 (端口 34567)
+- ✅ WebSocket 连接可用
+- ✅ 开机自启已配置
+
+---
+
+## 快速开始
+
+### 1. 确保 Firefox 扩展已连接
+
+1. 打开 Firefox
+2. 点击工具栏上的 MCP 图标
+3. 确认显示 "Connected"
+
+### 2. 使用 Python 直接控制
+
+```python
+import asyncio
+import websockets
+import json
+import base64
+
+async def control_firefox():
+    # 连接到 MCP Server
+    uri = 'ws://127.0.0.1:34567/client'
+    
+    # 注意：需要增加消息大小限制（截图数据大）
+    async with websockets.connect(uri, max_size=10*1024*1024) as ws:
+        # 初始化 MCP
+        await ws.send(json.dumps({
+            'jsonrpc': '2.0',
+            'id': '1',
+            'method': 'initialize',
+            'params': {
+                'protocolVersion': '2024-11-05',
+                'capabilities': {},
+                'clientInfo': {'name': 'my-app', 'version': '1.0'}
+            }
+        }))
+        await ws.recv()
+        
+        # 导航到网站
+        await ws.send(json.dumps({
+            'jsonrpc': '2.0',
+            'id': '2',
+            'method': 'tools/call',
+            'params': {
+                'name': 'firefox_navigate',
+                'arguments': {'url': 'https://example.com'}
+            }
+        }))
+        await ws.recv()
+        
+        # 获取页面标题
+        await ws.send(json.dumps({
+            'jsonrpc': '2.0',
+            'id': '3',
+            'method': 'tools/call',
+            'params': {
+                'name': 'firefox_get_page_title',
+                'arguments': {}
+            }
+        }))
+        resp = await ws.recv()
+        data = json.loads(resp)
+        result = json.loads(data['result']['content'][0]['text'])
+        print(f"标题: {result.get('title')}")
+        
+        # 截图
+        await ws.send(json.dumps({
+            'jsonrpc': '2.0',
+            'id': '4',
+            'method': 'tools/call',
+            'params': {
+                'name': 'firefox_screenshot',
+                'arguments': {}
+            }
+        }))
+        resp = await ws.recv()
+        data = json.loads(resp)
+        result = json.loads(data['result']['content'][0]['text'])
+        
+        # 处理 base64 前缀（重要！）
+        screenshot_data = result['screenshot']
+        if ',' in screenshot_data:
+            screenshot_data = screenshot_data.split(',')[1]
+        
+        png_data = base64.b64decode(screenshot_data)
+        with open('screenshot.png', 'wb') as f:
+            f.write(png_data)
+        print("截图已保存")
+
+asyncio.run(control_firefox())
+```
+
+---
+
+## 可用工具（19个）
+
+| 工具名 | 参数 | 说明 |
+|--------|------|------|
+| `firefox_navigate` | `{"url": "..."}` | 导航到 URL |
+| `firefox_get_tabs` | `{}` | 获取所有标签页 |
+| `firefox_get_current_url` | `{}` | 获取当前 URL |
+| `firefox_get_page_title` | `{}` | 获取页面标题 |
+| `firefox_get_page_content` | `{}` | 获取页面内容 |
+| `firefox_click` | `{"selector": "..."}` | 点击元素 |
+| `firefox_type` | `{"selector": "...", "text": "..."}` | 输入文本 |
+| `firefox_scroll` | `{"direction": "down", "pixels": 500}` | 滚动页面 |
+| `firefox_press_key` | `{"key": "Enter"}` | 按键 |
+| `firefox_select` | `{"selector": "...", "value": "..."}` | 选择下拉选项 |
+| `firefox_clear` | `{"selector": "..."}` | 清空输入 |
+| `firefox_hover` | `{"selector": "..."}` | 悬停元素 |
+| `firefox_refresh` | `{}` | 刷新页面 |
+| `firefox_go_back` | `{}` | 后退 |
+| `firefox_go_forward` | `{}` | 前进 |
+| `firefox_screenshot` | `{}` | 截图（返回 base64） |
+| `firefox_execute_js` | `{"code": "..."}` | 执行 JavaScript |
+| `firefox_wait` | `{"duration": 2}` | 等待（秒） |
+
+---
+
+## 关键注意事项
+
+### 1. WebSocket 消息大小限制
+截图数据约 1.5MB，必须设置 `max_size=10*1024*1024`：
+```python
+async with websockets.connect(uri, max_size=10*1024*1024) as ws:
+```
+
+### 2. Base64 前缀处理
+截图数据包含 `data:image/png;base64,` 前缀，需要分割：
+```python
+screenshot_data = result['screenshot']
+if ',' in screenshot_data:
+    screenshot_data = screenshot_data.split(',')[1]
+png_data = base64.b64decode(screenshot_data)
+```
+
+### 3. Selector 引号
+使用单引号包裹 selector：
+```python
+'input[name="custname"]'
+```
+
+### 4. 手动连接
+Firefox 扩展需要用户手动点击连接按钮，无法自动连接。
+
+---
+
+## 服务管理
 
 ```bash
-cd mcp-server
-npm install
-node ws-server-v2.js
-```
-
-服务器默认运行在 `ws://localhost:34567`
-
-### 2. 安装 Firefox 扩展
-
-**方法 A：直接安装签名版（推荐）**
-
-| 版本 | 文件 | 日期 | 说明 |
-|------|------|------|------|
-| **v1.0.3** | [firefox-mcp-v1.0.3.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.3/firefox-mcp-v1.0.3.xpi) | 2026-04-22 | 新增滚动、按键、导航等功能 |
-| v1.0.1 | [firefox-mcp-v1.0.1.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.1/firefox-mcp-v1.0.1.xpi) | 2026-04-22 | Bug 修复版 |
-| v1.0.0 | [firefox-mcp-v1.0.0.xpi](https://github.com/HougeLangley/firefox-mcp/releases/download/v1.0.0/firefox-mcp-v1.0.0.xpi) | 2026-04-16 | 初始版本 |
-
-1. 下载对应版本的 XPI 文件
-2. 打开 Firefox，访问 `about:addons`
-3. 点击齿轮图标 -> "从文件安装附加组件"
-4. 选择下载的 XPI 文件
-
-**方法 B：开发者模式（推荐开发使用）**
-1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`
-2. 点击"临时载入附加组件"
-3. 选择 `extension/manifest.json`
-
-**方法 B：打包安装**
-1. 运行 `./package-extension.sh` 生成 XPI 文件
-2. 在 Firefox 中安装 XPI 文件
-
-### 3. 安装 CLI 工具
-
-```bash
-# 创建软链接
-ln -s $(pwd)/bin/mcp ~/.local/bin/mcp
-
-# 安装依赖
-cd lib
-npm install ws
-```
-
-## 使用方法
-
-### CLI 命令
-
-```bash
-# 导航到 URL
-mcp navigate https://example.com
-
-# 向下滚动（默认 800px）
-mcp scroll
-mcp scroll 1000  # 滚动 1000px
-
-# 向上滚动
-mcp scrollup
-
-# 点击坐标
-mcp click 500 300
-
-# 输入文本
-mcp type "Hello World"
-
-# 获取页面内容
-mcp content
-
-# 获取当前 URL
-mcp url
-
-# 获取页面标题
-mcp title
-
-# 截图
-mcp screenshot
-
-# 等待（毫秒）
-mcp wait 2000
-
-# 执行 JavaScript
-mcp js "document.title"
-```
-
-### JavaScript API
-
-```javascript
-const MCPClient = require('./lib/mcp-client-fixed');
-
-const client = new MCPClient();
-await client.connect();
-
-// 导航
-await client.navigate('https://example.com');
-
-// 滚动
-await client.scrollDown(800);
-await client.scrollUp(800);
-
-// 点击
-await client.click(500, 300);
-
-// 输入
-await client.type('Hello World');
-
-// 执行 JS
-await client.executeJS('document.title');
-
-client.disconnect();
-```
-
-## 系统要求
-
-- Firefox 91.0+
-- Node.js 18+
-- Linux/macOS/Windows
-
-## 技术架构
-
-```
-┌─────────────┐      WebSocket       ┌──────────────┐
-│   Client    │ ◄──────────────────► │ MCP Server   │
-│  (Node.js)  │   ws://localhost:34567│  (Node.js)   │
-└─────────────┘                      └──────┬───────┘
-                                            │
-                                            │ WebSocket
-                                            │
-                                      ┌─────┴──────┐
-                                      │  Firefox   │
-                                      │ Extension  │
-                                      └────────────┘
-```
-
-## 可用工具
-
-| 工具名 | 功能 |
-|--------|------|
-| `firefox_navigate` | 导航到 URL |
-| `firefox_get_tabs` | 获取所有标签 |
-| `firefox_get_current_url` | 获取当前 URL |
-| `firefox_get_page_title` | 获取页面标题 |
-| `firefox_get_page_content` | 获取页面内容 |
-| `firefox_click` | 点击元素 |
-| `firefox_type` | 输入文本 |
-| `firefox_screenshot` | 截图 |
-| `firefox_execute_js` | 执行 JavaScript |
-| `firefox_wait` | 等待 |
-
-## 配置
-
-### 推荐方案：systemd + mcporter（OpenClaw 用户）
-
-**架构**：
-```
-mcporter → stdio-bridge → WebSocket → Firefox Extension
-                ↑
-         systemd 服务保持运行
-```
-
-**1. 安装并启动 systemd 服务**
-
-```bash
-# 复制服务文件
-cp mcp-server/firefox-mcp.service ~/.config/systemd/user/
-
-# 启用并启动
-systemctl --user daemon-reload
-systemctl --user enable firefox-mcp
-systemctl --user start firefox-mcp
-
-# 验证状态
+# 查看状态
 systemctl --user status firefox-mcp
-curl http://localhost:34567/health
+
+# 重启服务
+systemctl --user restart firefox-mcp
+
+# 停止服务
+systemctl --user stop firefox-mcp
+
+# 禁用开机自启
+systemctl --user disable firefox-mcp
 ```
 
-**2. 配置 mcporter**
+---
 
-编辑 `~/.mcporter/mcporter.json`：
+## 故障排除
 
-```json
-{
-  "mcpServers": {
-    "firefox-mcp": {
-      "command": "node",
-      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
-    }
-  }
-}
-```
+### 扩展未连接
+1. 检查 Firefox 扩展是否启用
+2. 点击 MCP 图标，点击 "Connect"
+3. 重启服务：`systemctl --user restart firefox-mcp`
 
-**3. 使用 mcporter 调用**
+### 命令无响应
+1. 检查服务状态：`systemctl --user status firefox-mcp`
+2. 检查 Health：`curl http://127.0.0.1:34567/health`
+3. 重启服务
 
-```bash
-# 列出工具
-mcporter list firefox-mcp
+### 截图失败
+1. 检查是否设置 `max_size=10*1024*1024`
+2. 检查 Base64 前缀处理
+3. 尝试减少截图区域
 
-# 导航到网页
-mcporter call firefox-mcp.firefox_navigate url="https://example.com"
+---
 
-# 滚动页面
-mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
-```
+## 与 mcporter 的区别
 
-📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md)
+| 特性 | mcporter (旧) | WebSocket (新) |
+|------|---------------|----------------|
+| 控制方式 | CLI 命令 | Python 直接连接 |
+| 灵活性 | 低 | 高 |
+| 集成度 | 需外部调用 | 直接集成到代码 |
+| 依赖 | mcporter 工具 | 仅需 websockets 库 |
 
-### 替代方案：手动启动服务器
+**建议**: 新项目使用 WebSocket 方式，旧项目可逐步迁移。
 
-如果不使用 systemd，可以手动启动服务器：
+---
 
-```bash
-cd mcp-server
-npm install
-node ws-server-v2.js
-```
+## 文件位置
 
-然后配置 mcporter 同上。注意：手动启动的服务器在终端关闭后会停止。
+- 扩展源码：`~/.openclaw/firefox-mcp/extension/`
+- MCP 服务器：`~/.openclaw/firefox-mcp/mcp-server/`
+- Native Host：`~/.openclaw/firefox-mcp/native-host/`
+- 签名扩展：`~/.openclaw/firefox-mcp/signed/`
+- 服务配置：`~/.config/systemd/user/firefox-mcp.service`
 
-## 开发
-
-### 构建扩展
-
-```bash
-./package-extension.sh
-```
-
-### 运行测试
-
-```bash
-node test-connection.js
-```
+---
 
 ## 更新日志
 
-### v1.0.3 (2026-04-22)
-**新增功能：**
-- **firefox_scroll** - 页面滚动（支持上下方向和像素数）
-- **firefox_press_key** - 模拟键盘按键
-- **firefox_select** - 下拉框选择
-- **firefox_clear** - 清空输入框
-- **firefox_hover** - 鼠标悬停
-- **firefox_refresh** - 刷新页面
-- **firefox_go_back** - 后退浏览历史
-- **firefox_go_forward** - 前进浏览历史
+### v1.0.6 (2026-04-25)
+- 修复 click、type、press_key、select、clear、hover 的 IIFE 参数传递
+- 更新文档为 WebSocket 控制方式
+- 弃用 mcporter CLI 工具
 
-**改进：**
-- 移除 `scripting` 权限，兼容 Firefox 91+
-- 新增 `ff` 独立 CLI 脚本，无需 mcporter 即可控制 Firefox
+### v1.0.4 (2026-04-22)
+- 初始发布
+- 支持 mcporter 控制
 
-### v1.0.1 (2026-04-22)
-- **修复 navigate**: `browser.tabs.update()` 返回旧 URL → 改用 `tabs.onUpdated` 监听页面加载完成
-- **修复 execute_js**: `executeScript requires code or file` → 用 IIFE 包装代码
-- **修复 click/type**: `redeclaration of const el` → 所有 `executeScript` 代码字符串用 IIFE 隔离作用域
+---
 
-### v1.0.0 (2026-04-16)
-- 初始版本，支持 10 个 MCP 工具
-- 支持 WebSocket 连接、标签管理、截图、JS 执行等
-
-## 许可证
-
-MIT License - 详见 LICENSE 文件
-
-## 作者
-
-- 墨 (Mo) - OpenClaw 项目
-
-## 致谢
-
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Mozilla Add-ons](https://addons.mozilla.org/)
-
-## 🔌 mcporter 集成（OpenClaw 用户推荐）
-
-Firefox MCP 支持通过 [mcporter](https://github.com/openclaw/mcporter) 调用，方便 OpenClaw 用户使用。
-
-📖 **详细指南**: [MCPorter-Guide.md](./MCPorter-Guide.md) - 包含完整的安装、配置和使用教程
-
-### 配置
-
-添加到你的 `~/.mcporter/mcporter.json`:
-
-```json
-{
-  "mcpServers": {
-    "firefox-mcp": {
-      "command": "node",
-      "args": ["/path/to/firefox-mcp/mcp-server/stdio-bridge-v2.js"]
-    }
-  }
-}
-```
-
-### 使用 mcporter 调用
-
-```bash
-# 列出工具
-mcporter list firefox-mcp
-
-# 导航到 URL
-mcporter call firefox-mcp.firefox_navigate url="https://example.com"
-
-# 获取当前页面信息
-mcporter call firefox-mcp.firefox_get_current_url
-mcporter call firefox-mcp.firefox_get_page_title
-mcporter call firefox-mcp.firefox_get_page_content
-
-# 执行 JavaScript
-mcporter call firefox-mcp.firefox_execute_js code="window.scrollBy(0, 800)"
-
-# 截图
-mcporter call firefox-mcp.firefox_screenshot
-
-# 等待
-mcporter call firefox-mcp.firefox_wait duration=2000
-```
-
-### 前提条件
-
-- Firefox MCP 服务器必须正在运行（`systemctl --user status firefox-mcp`）
-- Firefox 扩展必须已安装并连接
+*最后更新: 2026-04-25*
