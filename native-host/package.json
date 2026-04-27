@@ -1,0 +1,8 @@
+{
+  "name": "firefox-mcp-native-host",
+  "version": "1.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ws": "^8.20.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "openclaw.firefox.mcp",
+  "description": "OpenClaw Firefox MCP Native Messaging Host",
+  "path": "/var/home/houge/.openclaw/firefox-mcp/native-host/host-simple.js",
+  "type": "stdio",
+  "allowed_extensions": [
+    "openclaw-firefox-mcp@openclaw.ai"
+  ]
+}

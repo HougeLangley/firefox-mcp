@@ -65,8 +65,9 @@ wss.on('connection', (ws, req) => {
         log('From Firefox:', msg.id, msg.type);
         
         if (msg.type === 'response' && pending.has(msg.id)) {
-          const { clientWs, clientId, resolve, reject } = pending.get(msg.id);
+          const { clientWs, clientId, timeout, resolve, reject } = pending.get(msg.id);
           pending.delete(msg.id);
+          clearTimeout(timeout);
           
           if (msg.error) {
             clientWs.send(JSON.stringify({
@@ -146,6 +147,7 @@ wss.on('connection', (ws, req) => {
           pending.set(reqId, {
             clientWs: ws,
             clientId: msg.id,
+            timeout: timeout,
             resolve: () => {},
             reject: () => {}
           });
